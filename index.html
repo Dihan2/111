@@ -27,13 +27,14 @@
       color: var(--text);
       padding: 2rem 1rem;
     }
-    .game {
+    .game, .level2 {
       background: var(--card);
       width: 100%;
       max-width: 500px;
       padding: 2rem 1.5rem 3rem;
       border-radius: 12px;
       box-shadow: 0 6px 16px rgba(0, 0, 0, 0.6);
+      margin-bottom: 2rem;
     }
     h1 {
       margin: 0 0 1rem;
@@ -44,7 +45,7 @@
     p {
       margin: 0 0 1rem;
     }
-    input {
+    input[type="password"], input[type="text"] {
       width: 100%;
       padding: 0.8rem 1rem;
       font-size: 1rem;
@@ -52,6 +53,7 @@
       border-radius: 8px;
       background: #000;
       color: var(--text);
+      margin-bottom: 1rem;
     }
     ol {
       list-style: none;
@@ -96,14 +98,58 @@
       font-size: 1.2rem;
       font-weight: 700;
     }
+    .hide {
+      display: none !important;
+    }
+    /* 2048 styles */
+    .level2 {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .board {
+      display: grid;
+      grid-template-columns: repeat(4, 60px);
+      grid-template-rows: repeat(4, 60px);
+      gap: 8px;
+      margin-bottom: 1rem;
+    }
+    .tile {
+      width: 60px;
+      height: 60px;
+      background: #333;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #fff;
+      transition: background 0.2s;
+    }
+    .tile[data-value="2"] { background: #eee4da; color: #333; }
+    .tile[data-value="4"] { background: #ede0c8; color: #333; }
+    .tile[data-value="8"] { background: #f2b179; }
+    .tile[data-value="16"] { background: #f59563; }
+    .tile[data-value="32"] { background: #f67c5f; }
+    .tile[data-value="64"] { background: #f65e3b; }
+    .tile[data-value="128"] { background: #edcf72; color: #222; }
+    .tile[data-value="256"] { background: #edcc61; color: #222; }
+    .tile[data-value="512"] { background: #edc850; color: #222; }
+    .tile[data-value="1024"] { background: #edc53f; color: #222; }
+    .tile[data-value="2048"] { background: #edc22e; color: #fff; }
+    .score {
+      font-size: 1rem;
+      margin-bottom: 1rem;
+      color: var(--accent);
+    }
   </style>
 </head>
 <body>
-  <div class="game">
+  <div class="game" id="game1">
     <h1>Гра з Паролем</h1>
-    <p>Введіть пароль, який задовольняє <strong>усім правилам</strong> нижче. Перевірка відбувається у реальному часі.</p>
-    <input type="text" id="password" placeholder="Введіть пароль" autocomplete="off" />
-
+    <p>Введіть пароль, який задовольняє <strong>усім правилам</strong> нижче.<br>Перевірка у реальному часі.</p>
+    <input type="password" id="password" placeholder="Введіть пароль" autocomplete="off" />
     <ol id="rules">
       <li id="r1" class="failed"><span>Мінімум 5 символів</span></li>
       <li id="r2" class="failed"><span>Містить щонайменше одну цифру</span></li>
@@ -111,34 +157,39 @@
       <li id="r4" class="failed"><span>Містить спеціальний символ (! @ # $ % ^ &amp; * )</span></li>
       <li id="r5" class="failed"><span>Сума всіх цифр = 25</span></li>
       <li id="r6" class="failed"><span>Містить назву місяця (англ.)</span></li>
-      <li id="r7" class="failed"><span>Містить римську цифру</span></li>
+      <li id="r7" class="failed"><span>Містить римську цифру (I, V, X)</span></li>
       <li id="r8" class="failed"><span>Містить спонсора (Pepsi, Coke, Tesla)</span></li>
-      <li id="r9" class="failed"><span>Добуток римських цифр = 35</span></li>
+      <li id="r9" class="failed"><span>Сума римських цифр = 6</span></li>
       <li id="r10" class="failed"><span>CAPTCHA (введіть "42")</span></li>
     </ol>
     <div class="status" id="status">❌ Правила не виконані</div>
   </div>
 
+  <div class="level2 hide" id="level2">
+    <h1>2048 - Рівень 2</h1>
+    <div class="score" id="score">Очки: 0</div>
+    <div class="board" id="board"></div>
+    <div class="status" id="gameover"></div>
+    <button onclick="restart2048()">Заново</button>
+  </div>
+
   <script>
+    // === Пароль: level 1 ===
     const input = document.getElementById("password");
     const statusEl = document.getElementById("status");
 
     const monthRegex = /(january|february|march|april|may|june|july|august|september|october|november|december)/i;
     const sponsorRegex = /(pepsi|coke|tesla)/i;
-    const romanMap = { I: 1, V: 5, X: 10, L: 50, C: 100, D: 500, M: 1000 };
-
+    const romanMap = { I: 1, V: 5, X: 10 };
     function sumDigits(str) {
       return [...str].filter((c) => /\d/.test(c)).map(Number).reduce((a, b) => a + b, 0);
     }
-
     function romanDigits(str) {
       return [...str.toUpperCase()].filter((c) => romanMap[c]);
     }
-
-    function productRomans(arr) {
-      return arr.reduce((prod, c) => prod * romanMap[c], 1);
+    function sumRomans(arr) {
+      return arr.reduce((sum, c) => sum + romanMap[c], 0);
     }
-
     const rules = {
       r1: (v) => v.length >= 5,
       r2: (v) => /\d/.test(v),
@@ -151,11 +202,10 @@
       r9: (v) => {
         const romans = romanDigits(v);
         if (romans.length === 0) return false;
-        return productRomans(romans) === 35;
+        return sumRomans(romans) === 6; // например, "VI", "IVI", "IIVIII" (I+V=6, IVI=1+5=6)
       },
-      r10: (v) => /42/.test(v), // спрощена CAPTCHA
+      r10: (v) => /42/.test(v),
     };
-
     function validate() {
       const val = input.value;
       let all = true;
@@ -165,11 +215,126 @@
         li.className = ok ? "passed" : "failed";
         all = all && ok;
       }
-      statusEl.textContent = all ? "✅ Пароль прийнято!" : "❌ Правила не виконані";
-      statusEl.style.color = all ? "var(--good)" : "var(--bad)";
+      if (all) {
+        statusEl.textContent = "✅ Пароль прийнято! Рівень 2 відкрито!";
+        statusEl.style.color = "var(--good)";
+        setTimeout(() => {
+          document.getElementById("game1").classList.add("hide");
+          document.getElementById("level2").classList.remove("hide");
+          start2048();
+        }, 900);
+      } else {
+        statusEl.textContent = "❌ Правила не виконані";
+        statusEl.style.color = "var(--bad)";
+      }
     }
-
     input.addEventListener("input", validate);
+
+    // === 2048: Level 2 ===
+    let board, score;
+    const boardEl = document.getElementById("board");
+    const scoreEl = document.getElementById("score");
+    const gameOverEl = document.getElementById("gameover");
+
+    function initBoard() {
+      board = Array(4).fill(0).map(() => Array(4).fill(0));
+      addRandom();
+      addRandom();
+      score = 0;
+      updateBoard();
+    }
+    function addRandom() {
+      let empty = [];
+      for (let r = 0; r < 4; r++)
+        for (let c = 0; c < 4; c++)
+          if (board[r][c] === 0) empty.push([r, c]);
+      if (empty.length === 0) return;
+      let [r, c] = empty[Math.floor(Math.random() * empty.length)];
+      board[r][c] = Math.random() < 0.9 ? 2 : 4;
+    }
+    function updateBoard() {
+      boardEl.innerHTML = "";
+      for (let r = 0; r < 4; r++)
+        for (let c = 0; c < 4; c++) {
+          const val = board[r][c];
+          let d = document.createElement("div");
+          d.className = "tile";
+          if (val > 0) d.setAttribute("data-value", val);
+          d.textContent = val > 0 ? val : "";
+          boardEl.appendChild(d);
+        }
+      scoreEl.textContent = `Очки: ${score}`;
+      if (isGameOver()) {
+        gameOverEl.textContent = "Гру закінчено!";
+      } else {
+        gameOverEl.textContent = "";
+      }
+    }
+    function slide(row) {
+      row = row.filter(val => val);
+      for (let i = 0; i < row.length - 1; i++) {
+        if (row[i] === row[i + 1]) {
+          row[i] *= 2;
+          score += row[i];
+          row[i + 1] = 0;
+        }
+      }
+      row = row.filter(val => val);
+      while (row.length < 4) row.push(0);
+      return row;
+    }
+    function rotateBoard(b) {
+      return b[0].map((_, i) => b.map(row => row[i]).reverse());
+    }
+    function move(direction) {
+      let old = JSON.stringify(board);
+      if (direction === "left") {
+        board = board.map(row => slide(row));
+      } else if (direction === "right") {
+        board = board.map(row => slide(row.reverse()).reverse());
+      } else if (direction === "up") {
+        board = rotateBoard(board);
+        board = board.map(row => slide(row));
+        board = rotateBoard(rotateBoard(rotateBoard(board)));
+      } else if (direction === "down") {
+        board = rotateBoard(board);
+        board = board.map(row => slide(row.reverse()).reverse());
+        board = rotateBoard(rotateBoard(rotateBoard(board)));
+      }
+      if (JSON.stringify(board) !== old) {
+        addRandom();
+        updateBoard();
+      }
+    }
+    function isGameOver() {
+      for (let r = 0; r < 4; r++)
+        for (let c = 0; c < 4; c++) {
+          if (board[r][c] === 0) return false;
+          if (c < 3 && board[r][c] === board[r][c + 1]) return false;
+          if (r < 3 && board[r][c] === board[r + 1][c]) return false;
+        }
+      return true;
+    }
+    function start2048() {
+      initBoard();
+      updateBoard();
+      document.addEventListener("keydown", handleKey);
+    }
+    function handleKey(e) {
+      if (document.getElementById("level2").classList.contains("hide")) return;
+      if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown"].includes(e.key)) {
+        move(e.key.replace("Arrow", "").toLowerCase());
+        e.preventDefault();
+      }
+    }
+    function restart2048() {
+      initBoard();
+      updateBoard();
+    }
+    // remove handler on leave
+    window.addEventListener("beforeunload", () => {
+      document.removeEventListener("keydown", handleKey);
+    });
   </script>
 </body>
 </html>
