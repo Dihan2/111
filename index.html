@@ -170,7 +170,7 @@
     <div class="score" id="score">Очки: 0</div>
     <div class="board" id="board"></div>
     <div class="status" id="gameover"></div>
-    <button onclick="restart2048()">Заново</button>
+    <button onclick="restart2048()">ВУПИ</button>
   </div>
 
   <script>
@@ -225,7 +225,7 @@
         }, 900);
       } else {
         statusEl.textContent = "❌ Правила не виконані";
-        statusEl.style.color = "var(--bad)";
+        statusEl.style.color = "let(--bad)";
       }
     }
     input.addEventListener("input", validate);
